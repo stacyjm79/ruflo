@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Star Alliance — Illuminate the Future</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['Space Grotesk', 'sans-serif'],
+            body: ['DM Sans', 'sans-serif'],
+          },
+          colors: {
+            space: {
+              950: '#020209',
+              900: '#050510',
+              800: '#0B0B1A',
+              700: '#12122A',
+              600: '#1A1A3E',
+            },
+            indigo: {
+              400: '#818CF8',
+              500: '#6366F1',
+              600: '#4F46E5',
+            },
+            violet: {
+              400: '#A78BFA',
+              500: '#8B5CF6',
+            },
+            star: '#E0E7FF',
+          },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4,0,0.6,1) infinite',
+            'twinkle': 'twinkle 3s ease-in-out infinite',
+            'slide-up': 'slideUp 0.6s ease forwards',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-12px)' },
+            },
+            twinkle: {
+              '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+              '50%': { opacity: '0.3', transform: 'scale(0.7)' },
+            },
+            slideUp: {
+              '0%': { opacity: '0', transform: 'translateY(32px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            glow: {
+              '0%': { boxShadow: '0 0 20px rgba(99,102,241,0.3)' },
+              '100%': { boxShadow: '0 0 40px rgba(99,102,241,0.7), 0 0 80px rgba(99,102,241,0.2)' },
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* Base */
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: #050510;
+      color: #E0E7FF;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, h5, h6, .font-heading {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Starfield Canvas */
+    #starfield {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Gradient orbs */
+    .orb {
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      position: absolute;
+      pointer-events: none;
+    }
+
+    /* Glassmorphism cards */
+    .glass {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-hover {
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .glass-hover:hover {
+      background: rgba(99, 102, 241, 0.1);
+      border-color: rgba(99, 102, 241, 0.4);
+      transform: translateY(-2px);
+    }
+
+    /* Gradient text */
+    .text-gradient {
+      background: linear-gradient(135deg, #818CF8 0%, #A78BFA 50%, #6366F1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Glow button */
+    .btn-glow {
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .btn-glow:hover {
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.6), 0 0 60px rgba(99, 102, 241, 0.2);
+      transform: translateY(-1px);
+    }
+    .btn-glow:focus-visible {
+      outline: 2px solid #818CF8;
+      outline-offset: 3px;
+    }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Nav */
+    nav {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    /* Star particles */
+    .star-particle {
+      position: absolute;
+      border-radius: 50%;
+      background: white;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite;
+      animation-delay: var(--delay, 0s);
+    }
+
+    /* Bento grid special card */
+    .bento-highlight {
+      background: linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(139,92,246,0.1) 100%);
+      border: 1px solid rgba(99,102,241,0.3);
+    }
+
+    /* Divider glow */
+    .divider-glow {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent);
+    }
+
+    /* Number counter style */
+    .stat-number {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      background: linear-gradient(135deg, #818CF8, #A78BFA);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  </style>
+</head>
+
+<body class="relative min-h-screen">
+  <!-- Starfield -->
+  <canvas id="starfield" aria-hidden="true"></canvas>
+
+  <!-- Ambient orbs -->
+  <div aria-hidden="true">
+    <div class="orb w-96 h-96 bg-indigo-500 top-0 left-1/4" style="position:fixed;z-index:0;"></div>
+    <div class="orb w-80 h-80 bg-violet-500 top-1/3 right-1/4" style="position:fixed;z-index:0;"></div>
+    <div class="orb w-64 h-64 bg-indigo-600 bottom-1/4 left-1/3" style="position:fixed;z-index:0;"></div>
+  </div>
+
+  <!-- ===================== NAV ===================== -->
+  <nav class="fixed top-4 left-4 right-4 z-50 rounded-2xl glass border border-white/10 px-6 py-4"
+       role="navigation" aria-label="Main navigation">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <!-- Logo -->
+      <a href="#" class="flex items-center gap-3 cursor-pointer" aria-label="Digital Star Alliance home">
+        <div class="w-9 h-9 rounded-xl btn-glow flex items-center justify-center flex-shrink-0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"
+                  fill="white" stroke="white" stroke-width="0.5"/>
+          </svg>
+        </div>
+        <span class="font-heading font-700 text-white text-lg hidden sm:block">Digital Star Alliance</span>
+        <span class="font-heading font-700 text-white text-lg sm:hidden">DSA</span>
+      </a>
+
+      <!-- Desktop links -->
+      <ul class="hidden md:flex items-center gap-8" role="list">
+        <li><a href="#features" class="text-white/70 hover:text-white transition-colors duration-200 cursor-pointer text-sm font-medium">Features</a></li>
+        <li><a href="#how-it-works" class="text-white/70 hover:text-white transition-colors duration-200 cursor-pointer text-sm font-medium">How It Works</a></li>
+        <li><a href="#alliance" class="text-white/70 hover:text-white transition-colors duration-200 cursor-pointer text-sm font-medium">Alliance</a></li>
+        <li><a href="#contact" class="text-white/70 hover:text-white transition-colors duration-200 cursor-pointer text-sm font-medium">Contact</a></li>
+      </ul>
+
+      <!-- CTA -->
+      <a href="#join" class="btn-glow cursor-pointer px-5 py-2.5 rounded-xl text-white text-sm font-semibold font-heading">
+        Join Now
+      </a>
+    </div>
+  </nav>
+
+  <!-- ===================== HERO ===================== -->
+  <section id="hero" class="relative min-h-screen flex items-center justify-center px-4 pt-32 pb-20"
+           style="z-index:1;">
+    <div class="max-w-5xl mx-auto text-center">
+      <!-- Badge -->
+      <div class="reveal inline-flex items-center gap-2 glass rounded-full px-4 py-2 mb-8 cursor-default">
+        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow"></span>
+        <span class="text-xs font-medium text-white/70 uppercase tracking-widest">Now Accepting New Members</span>
+      </div>
+
+      <!-- Headline -->
+      <h1 class="reveal font-heading font-700 text-5xl md:text-7xl lg:text-8xl leading-tight mb-6">
+        <span class="text-white">Illuminate</span><br/>
+        <span class="text-gradient">the Digital</span><br/>
+        <span class="text-white">Future</span>
+      </h1>
+
+      <!-- Subheadline -->
+      <p class="reveal text-white/60 text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed"
+         style="transition-delay:0.15s">
+        Digital Star Alliance unites visionary builders, technologists, and
+        innovators to co-create the next era of digital infrastructure — boldly
+        and collaboratively.
+      </p>
+
+      <!-- CTAs -->
+      <div class="reveal flex flex-col sm:flex-row items-center justify-center gap-4 mb-20"
+           style="transition-delay:0.25s">
+        <a href="#join"
+           class="btn-glow cursor-pointer w-full sm:w-auto px-8 py-4 rounded-xl text-white font-semibold font-heading text-base">
+          Join the Alliance
+        </a>
+        <a href="#features"
+           class="cursor-pointer w-full sm:w-auto px-8 py-4 rounded-xl text-white/80 font-semibold font-heading text-base glass glass-hover border border-white/10">
+          Explore Features
+        </a>
+      </div>
+
+      <!-- Scroll indicator -->
+      <div class="flex justify-center animate-float" aria-hidden="true">
+        <div class="flex flex-col items-center gap-2 text-white/30">
+          <span class="text-xs uppercase tracking-widest">Scroll</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STATS ===================== -->
+  <section class="relative px-4 py-16" style="z-index:1;">
+    <div class="max-w-6xl mx-auto">
+      <div class="divider-glow mb-12"></div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div class="reveal">
+          <div class="stat-number text-4xl md:text-5xl mb-2">500+</div>
+          <div class="text-white/50 text-sm uppercase tracking-wider">Global Members</div>
+        </div>
+        <div class="reveal" style="transition-delay:0.1s">
+          <div class="stat-number text-4xl md:text-5xl mb-2">48</div>
+          <div class="text-white/50 text-sm uppercase tracking-wider">Countries</div>
+        </div>
+        <div class="reveal" style="transition-delay:0.2s">
+          <div class="stat-number text-4xl md:text-5xl mb-2">$2.4B</div>
+          <div class="text-white/50 text-sm uppercase tracking-wider">Capital Deployed</div>
+        </div>
+        <div class="reveal" style="transition-delay:0.3s">
+          <div class="stat-number text-4xl md:text-5xl mb-2">99.9%</div>
+          <div class="text-white/50 text-sm uppercase tracking-wider">Uptime SLA</div>
+        </div>
+      </div>
+      <div class="divider-glow mt-12"></div>
+    </div>
+  </section>
+
+  <!-- ===================== FEATURES (BENTO) ===================== -->
+  <section id="features" class="relative px-4 py-24" style="z-index:1;">
+    <div class="max-w-7xl mx-auto">
+      <!-- Section header -->
+      <div class="text-center mb-16">
+        <div class="reveal inline-flex items-center gap-2 glass rounded-full px-4 py-2 mb-6">
+          <span class="text-xs font-medium text-indigo-400 uppercase tracking-widest">Core Capabilities</span>
+        </div>
+        <h2 class="reveal font-heading text-4xl md:text-5xl font-700 text-white mb-4">
+          Built for the <span class="text-gradient">Next Frontier</span>
+        </h2>
+        <p class="reveal text-white/50 text-lg max-w-xl mx-auto" style="transition-delay:0.1s">
+          A constellation of tools, networks, and intelligence designed for those who build what's next.
+        </p>
+      </div>
+
+      <!-- Bento Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-auto">
+
+        <!-- Large feature 1 — spans 2 cols, 2 rows -->
+        <div class="reveal md:col-span-2 md:row-span-2 bento-highlight rounded-2xl p-8 glass-hover cursor-pointer"
+             style="transition-delay:0.05s">
+          <div class="h-full flex flex-col justify-between min-h-72">
+            <div>
+              <div class="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center mb-6">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                        fill="none" stroke="#818CF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <h3 class="font-heading text-2xl font-600 text-white mb-3">Decentralized Intelligence Network</h3>
+              <p class="text-white/60 leading-relaxed">
+                A distributed AI backbone that connects alliance members, surfaces insights in real time,
+                and learns collectively from the entire ecosystem — making every node smarter over time.
+              </p>
+            </div>
+            <div class="mt-8 flex items-center gap-2 text-indigo-400 font-medium text-sm cursor-pointer group">
+              <span>Explore Network</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="reveal glass rounded-2xl p-6 glass-hover cursor-pointer" style="transition-delay:0.1s">
+          <div class="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" stroke="#A78BFA" stroke-width="2"/>
+              <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z"
+                    stroke="#A78BFA" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3 class="font-heading text-lg font-600 text-white mb-2">Global Infrastructure</h3>
+          <p class="text-white/55 text-sm leading-relaxed">Edge nodes across 6 continents with sub-50ms latency guarantees.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="reveal glass rounded-2xl p-6 glass-hover cursor-pointer" style="transition-delay:0.15s">
+          <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="font-heading text-lg font-600 text-white mb-2">Zero-Trust Security</h3>
+          <p class="text-white/55 text-sm leading-relaxed">End-to-end encryption with cryptographic identity verification at every layer.</p>
+        </div>
+
+        <!-- Feature 4 - wide -->
+        <div class="reveal md:col-span-2 glass rounded-2xl p-6 glass-hover cursor-pointer" style="transition-delay:0.2s">
+          <div class="flex items-start gap-5">
+            <div class="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#818CF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="9" cy="7" r="4" stroke="#818CF8" stroke-width="2"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#818CF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-heading text-lg font-600 text-white mb-2">Alliance Governance</h3>
+              <p class="text-white/55 text-sm leading-relaxed">On-chain voting and transparent decision-making tools that keep every member's voice in the constellation.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="reveal glass rounded-2xl p-6 glass-hover cursor-pointer" style="transition-delay:0.25s">
+          <div class="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="font-heading text-lg font-600 text-white mb-2">Real-Time Analytics</h3>
+          <p class="text-white/55 text-sm leading-relaxed">Live dashboards tracking ecosystem health, capital flows, and growth metrics.</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="reveal glass rounded-2xl p-6 glass-hover cursor-pointer" style="transition-delay:0.3s">
+          <div class="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="#EC4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="font-heading text-lg font-600 text-white mb-2">Instant Deployment</h3>
+          <p class="text-white/55 text-sm leading-relaxed">Ship products across the alliance network with one-click, zero-config deployments.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== HOW IT WORKS ===================== -->
+  <section id="how-it-works" class="relative px-4 py-24" style="z-index:1;">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-16">
+        <div class="reveal inline-flex items-center gap-2 glass rounded-full px-4 py-2 mb-6">
+          <span class="text-xs font-medium text-violet-400 uppercase tracking-widest">The Process</span>
+        </div>
+        <h2 class="reveal font-heading text-4xl md:text-5xl font-700 text-white mb-4">
+          Three Steps to <span class="text-gradient">Stardom</span>
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+        <!-- Connector line -->
+        <div class="hidden md:block absolute top-12 left-1/6 right-1/6 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" aria-hidden="true"></div>
+
+        <!-- Step 1 -->
+        <div class="reveal text-center" style="transition-delay:0.1s">
+          <div class="w-24 h-24 rounded-2xl bento-highlight flex items-center justify-center mx-auto mb-6 animate-float" style="animation-delay:0s">
+            <span class="font-heading text-3xl font-700 text-gradient">01</span>
+          </div>
+          <h3 class="font-heading text-xl font-600 text-white mb-3">Apply & Align</h3>
+          <p class="text-white/55 leading-relaxed">Submit your profile. Our alignment engine matches you with synergistic members, projects, and resources instantly.</p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="reveal text-center" style="transition-delay:0.2s">
+          <div class="w-24 h-24 rounded-2xl bento-highlight flex items-center justify-center mx-auto mb-6 animate-float" style="animation-delay:1s">
+            <span class="font-heading text-3xl font-700 text-gradient">02</span>
+          </div>
+          <h3 class="font-heading text-xl font-600 text-white mb-3">Connect & Build</h3>
+          <p class="text-white/55 leading-relaxed">Access the full alliance network — shared infrastructure, co-creation tools, and a knowledge base growing every day.</p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="reveal text-center" style="transition-delay:0.3s">
+          <div class="w-24 h-24 rounded-2xl bento-highlight flex items-center justify-center mx-auto mb-6 animate-float" style="animation-delay:2s">
+            <span class="font-heading text-3xl font-700 text-gradient">03</span>
+          </div>
+          <h3 class="font-heading text-xl font-600 text-white mb-3">Scale & Shine</h3>
+          <p class="text-white/55 leading-relaxed">Leverage collective capital, reach, and reputation to launch products that orbit beyond what's possible alone.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ALLIANCE LOGOS ===================== -->
+  <section id="alliance" class="relative px-4 py-20" style="z-index:1;">
+    <div class="max-w-6xl mx-auto text-center">
+      <p class="reveal text-white/40 text-sm uppercase tracking-widest mb-10">Trusted by builders at</p>
+      <div class="reveal flex flex-wrap items-center justify-center gap-8 md:gap-16 opacity-50">
+        <span class="font-heading font-700 text-xl text-white/70">Nexus</span>
+        <span class="font-heading font-700 text-xl text-white/70">Orion Labs</span>
+        <span class="font-heading font-700 text-xl text-white/70">Vega Systems</span>
+        <span class="font-heading font-700 text-xl text-white/70">Sirius AI</span>
+        <span class="font-heading font-700 text-xl text-white/70">Pulsar</span>
+        <span class="font-heading font-700 text-xl text-white/70">Quasar Co.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CTA / JOIN ===================== -->
+  <section id="join" class="relative px-4 py-32" style="z-index:1;">
+    <div class="max-w-4xl mx-auto text-center">
+      <div class="reveal glass rounded-3xl p-12 md:p-20 border border-indigo-500/20 relative overflow-hidden">
+        <!-- Glow behind card -->
+        <div class="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-violet-500/5 pointer-events-none" aria-hidden="true"></div>
+
+        <div class="relative">
+          <div class="inline-flex items-center gap-2 glass rounded-full px-4 py-2 mb-8">
+            <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow"></span>
+            <span class="text-xs font-medium text-white/70 uppercase tracking-widest">Applications Open</span>
+          </div>
+          <h2 class="font-heading text-4xl md:text-6xl font-700 text-white mb-6">
+            Ready to join the<br/><span class="text-gradient">constellation?</span>
+          </h2>
+          <p class="text-white/55 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
+            Apply now and gain access to the alliance's full network, infrastructure, and community within 48 hours.
+          </p>
+
+          <!-- Email input -->
+          <form class="flex flex-col sm:flex-row items-stretch gap-3 max-w-md mx-auto mb-6"
+                onsubmit="handleSubmit(event)" novalidate>
+            <label for="email-input" class="sr-only">Your email address</label>
+            <input
+              id="email-input"
+              type="email"
+              placeholder="your@email.com"
+              autocomplete="email"
+              required
+              class="flex-1 px-5 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30 transition-all duration-200 text-sm"
+            />
+            <button
+              type="submit"
+              class="btn-glow cursor-pointer px-6 py-3.5 rounded-xl text-white font-semibold font-heading text-sm whitespace-nowrap"
+            >
+              Apply Now
+            </button>
+          </form>
+          <p id="form-message" class="text-sm text-white/40 min-h-5" aria-live="polite"></p>
+          <p class="text-white/30 text-xs mt-2">No spam. Unsubscribe at any time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer id="contact" class="relative px-4 py-16" style="z-index:1;" role="contentinfo">
+    <div class="max-w-7xl mx-auto">
+      <div class="divider-glow mb-12"></div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
+        <!-- Brand -->
+        <div class="md:col-span-2">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-9 h-9 rounded-xl btn-glow flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"
+                      fill="white" stroke="white" stroke-width="0.5"/>
+              </svg>
+            </div>
+            <span class="font-heading font-700 text-white text-lg">Digital Star Alliance</span>
+          </div>
+          <p class="text-white/45 text-sm leading-relaxed max-w-xs">
+            Uniting the brightest builders across the digital cosmos to create, collaborate, and illuminate the future.
+          </p>
+        </div>
+
+        <!-- Links -->
+        <div>
+          <h4 class="font-heading font-600 text-white text-sm uppercase tracking-wider mb-4">Alliance</h4>
+          <ul class="space-y-3" role="list">
+            <li><a href="#features" class="text-white/45 text-sm hover:text-white transition-colors duration-200 cursor-pointer">Features</a></li>
+            <li><a href="#how-it-works" class="text-white/45 text-sm hover:text-white transition-colors duration-200 cursor-pointer">How It Works</a></li>
+            <li><a href="#join" class="text-white/45 text-sm hover:text-white transition-colors duration-200 cursor-pointer">Join</a></li>
+            <li><a href="#" class="text-white/45 text-sm hover:text-white transition-colors duration-200 cursor-pointer">Blog</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-heading font-600 text-white text-sm uppercase tracking-wider mb-4">Connect</h4>
+          <ul class="space-y-3" role="list">
+            <li><a href="#" class="text-white/45 text-sm hover:text-white transition-colors duration-200 cursor-pointer">Twitter / X</a></li>
+            <li><a href="#" class="text-white/45 text-sm hover:text-white transition-colors duration-200 cursor-pointer">LinkedIn</a></li>
+            <li><a href="#" class="text-white/45 text-sm hover:text-white transition-colors duration-200 cursor-pointer">Discord</a></li>
+            <li><a href="#" class="text-white/45 text-sm hover:text-white transition-colors duration-200 cursor-pointer">GitHub</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="divider-glow mt-12 mb-6"></div>
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-white/30 text-xs">
+        <span>&copy; 2026 Digital Star Alliance. All rights reserved.</span>
+        <div class="flex items-center gap-6">
+          <a href="#" class="hover:text-white/60 transition-colors duration-200 cursor-pointer">Privacy Policy</a>
+          <a href="#" class="hover:text-white/60 transition-colors duration-200 cursor-pointer">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===================== SCRIPTS ===================== -->
+  <script>
+    // ── Starfield ──────────────────────────────────────────────────────────────
+    (function () {
+      const canvas = document.getElementById('starfield');
+      const ctx = canvas.getContext('2d');
+      let stars = [];
+      const STAR_COUNT = 200;
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function initStars() {
+        stars = Array.from({ length: STAR_COUNT }, () => ({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 1.2 + 0.2,
+          alpha: Math.random(),
+          speed: Math.random() * 0.005 + 0.002,
+          phase: Math.random() * Math.PI * 2,
+        }));
+      }
+
+      function draw(ts) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        stars.forEach(s => {
+          const a = 0.4 + 0.6 * Math.abs(Math.sin(s.phase + ts * s.speed));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(224,231,255,${a})`;
+          ctx.fill();
+        });
+        requestAnimationFrame(draw);
+      }
+
+      resize();
+      initStars();
+      requestAnimationFrame(draw);
+      window.addEventListener('resize', () => { resize(); initStars(); });
+    })();
+
+    // ── Scroll Reveal ──────────────────────────────────────────────────────────
+    (function () {
+      const observer = new IntersectionObserver(
+        entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+        { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+      );
+      document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    })();
+
+    // ── Form submit ────────────────────────────────────────────────────────────
+    function handleSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('email-input');
+      const msg = document.getElementById('form-message');
+      const email = input.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        msg.textContent = 'Please enter a valid email address.';
+        msg.style.color = '#F87171';
+        return;
+      }
+      msg.textContent = 'You\'re on the list! We\'ll be in touch within 48 hours.';
+      msg.style.color = '#4ADE80';
+      input.value = '';
+    }
+  </script>
+</body>
+</html>
