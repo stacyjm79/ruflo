@@ -1,8 +1,8 @@
 # Claude Code Configuration - Ruflo v3.5
 
-> **Ruflo v3.5** (2026-02-27) — First major stable release. Formerly "Claude Flow".
-> 5,900+ commits, 55 alpha iterations, 259 MCP tools, 60+ agents, 8 AgentDB controllers.
-> Packages: `@claude-flow/cli@3.5.0`, `claude-flow@3.5.0`, `ruflo@3.5.0`
+> **Ruflo v3.5.48** (2026-03-28) — Current release. Formerly "Claude Flow".
+> 6,000+ commits, 55+ alpha iterations, 259+ MCP tools, 60+ agents, 8 AgentDB controllers.
+> Packages: `@claude-flow/cli@3.5.48`, `claude-flow@3.5.48`, `ruflo@3.5.48`
 
 ## Behavioral Rules (Always Enforced)
 
@@ -38,12 +38,27 @@
 
 | Package | Path | Purpose |
 |---------|------|---------|
-| `@claude-flow/cli` | `v3/@claude-flow/cli/` | CLI entry point (26 commands) |
+| `@claude-flow/cli` | `v3/@claude-flow/cli/` | CLI entry point (30+ commands) |
 | `@claude-flow/codex` | `v3/@claude-flow/codex/` | Dual-mode Claude + Codex collaboration |
-| `@claude-flow/guidance` | `v3/@claude-flow/guidance/` | Governance control plane |
-| `@claude-flow/hooks` | `v3/@claude-flow/hooks/` | 17 hooks + 12 workers |
+| `@claude-flow/guidance` | `v3/@claude-flow/guidance/` | Governance control plane (compile/enforce CLAUDE.md policies) |
+| `@claude-flow/hooks` | `v3/@claude-flow/hooks/` | 17 hooks + 12 workers + statusline |
 | `@claude-flow/memory` | `v3/@claude-flow/memory/` | AgentDB + HNSW search |
 | `@claude-flow/security` | `v3/@claude-flow/security/` | Input validation, CVE remediation |
+| `@claude-flow/agents` | `v3/@claude-flow/agents/` | Agent lifecycle and coordination |
+| `@claude-flow/swarm` | `v3/@claude-flow/swarm/` | Multi-agent swarm orchestration |
+| `@claude-flow/mcp` | `v3/@claude-flow/mcp/` | MCP server and tool definitions |
+| `@claude-flow/neural` | `v3/@claude-flow/neural/` | SONA, MoE, HNSW, EWC++ neural stack |
+| `@claude-flow/performance` | `v3/@claude-flow/performance/` | Benchmarking and profiling |
+| `@claude-flow/embeddings` | `v3/@claude-flow/embeddings/` | Vector embeddings with sql.js/ONNX |
+| `@claude-flow/plugins` | `v3/@claude-flow/plugins/` | Plugin registry and lifecycle |
+| `@claude-flow/deployment` | `v3/@claude-flow/deployment/` | Deployment management |
+| `@claude-flow/claims` | `v3/@claude-flow/claims/` | Claims-based authorization |
+| `@claude-flow/shared` | `v3/@claude-flow/shared/` | Shared types and utilities |
+| `@claude-flow/integration` | `v3/@claude-flow/integration/` | agentic-flow bridge + token optimizer |
+| `@claude-flow/testing` | `v3/@claude-flow/testing/` | Test utilities |
+| `@claude-flow/aidefence` | `v3/@claude-flow/aidefence/` | AI safety and adversarial defences |
+| `claude-flow` | `v3/` | Umbrella package (re-exports CLI) |
+| `ruflo` | `ruflo/` | Brand alias for `claude-flow` |
 
 ## Concurrency: 1 MESSAGE = ALL RELATED OPERATIONS
 
@@ -369,33 +384,57 @@ This project is configured with Claude Flow V3 (Anti-Drift Defaults):
 | `process` | 4 | Background process management |
 | `doctor` | 1 | System diagnostics with health checks |
 | `completions` | 4 | Shell completions (bash, zsh, fish, powershell) |
+| `autopilot` | 4 | Persistent swarm completion — keeps agents working until ALL tasks done (ADR-072) |
+| `guidance` | 4 | Governance control plane — compile/retrieve/enforce/optimize CLAUDE.md policies |
+| `issues` | 10 | Collaborative issue claims for human-agent workflows (ADR-016) |
+| `appliance` | 8 | RVFA self-contained appliance management (build, inspect, verify, sign, publish) |
+| `analyze` | — | Deep codebase analysis and insights |
+| `route` | — | Intelligent 3-tier model routing recommendation |
+| `benchmark` | — | Standalone benchmarking suite |
+| `update` | — | Self-update CLI to latest version |
+| `agent-wasm` | — | WASM-based agent execution (Agent Booster tier) |
+| `transfer-store` | — | Transfer and store patterns across sessions |
 
 ### Quick CLI Examples
 
 ```bash
 # Initialize project
-npx claude-flow@v3alpha init --wizard
+npx claude-flow@latest init --wizard
 
 # Start daemon with background workers
-npx claude-flow@v3alpha daemon start
+npx claude-flow@latest daemon start
 
 # Spawn an agent
-npx claude-flow@v3alpha agent spawn -t coder --name my-coder
+npx claude-flow@latest agent spawn -t coder --name my-coder
 
 # Initialize swarm
-npx claude-flow@v3alpha swarm init --v3-mode
+npx claude-flow@latest swarm init --v3-mode
 
 # Search memory (HNSW-indexed)
-npx claude-flow@v3alpha memory search -q "authentication patterns"
+npx claude-flow@latest memory search -q "authentication patterns"
 
 # System diagnostics
-npx claude-flow@v3alpha doctor --fix
+npx claude-flow@latest doctor --fix
 
 # Security scan
-npx claude-flow@v3alpha security scan --depth full
+npx claude-flow@latest security scan --depth full
 
 # Performance benchmark
-npx claude-flow@v3alpha performance benchmark --suite all
+npx claude-flow@latest performance benchmark --suite all
+
+# Autopilot: run until all tasks complete (ADR-072)
+npx claude-flow@latest autopilot start
+npx claude-flow@latest autopilot status
+npx claude-flow@latest autopilot stop
+
+# Guidance: compile CLAUDE.md policy bundle
+npx claude-flow@latest guidance compile -r ./CLAUDE.md -l ./CLAUDE.local.md
+npx claude-flow@latest guidance enforce
+
+# Issues: claim GitHub issues for human-agent workflows
+npx claude-flow@latest issues list
+npx claude-flow@latest issues claim 123
+npx claude-flow@latest issues board
 ```
 
 ## Headless Background Instances (claude -p)
@@ -1039,6 +1078,101 @@ npx claude-flow@v3alpha plugins publish
 ```
 
 Registry source: IPFS via Pinata (`QmXbfEAaR7D2Ujm4GAkbwcGZQMHqAMpwDoje4583uNP834`)
+
+## Autopilot (ADR-072)
+
+Autopilot keeps agents working until ALL tasks are done — a persistent completion loop that survives session boundaries.
+
+### How It Works
+
+1. **Enable**: `npx claude-flow@latest autopilot start [--max-iterations N] [--timeout-minutes M]`
+2. **Stop hook**: Before Claude exits, autopilot checks for incomplete tasks
+3. **Continue**: If tasks remain, autopilot injects a continue prompt automatically
+4. **Stop**: When all tasks complete or limits are hit, autopilot allows graceful exit
+
+### Task Sources
+
+Autopilot discovers tasks from multiple sources:
+- `TodoWrite` tasks (via Claude's task list)
+- GitHub issues (via `issues` command claims)
+- Custom task files
+
+### Safety Limits
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `maxIterations` | 50 | Hard stop after N iterations |
+| `timeoutMinutes` | 120 | Hard stop after N minutes |
+
+```bash
+npx claude-flow@latest autopilot start --max-iterations 20 --timeout-minutes 60
+npx claude-flow@latest autopilot status
+npx claude-flow@latest autopilot log       # View iteration history
+npx claude-flow@latest autopilot stop
+```
+
+## Guidance System
+
+The `@claude-flow/guidance` package treats CLAUDE.md as a **governance control plane** — it compiles, validates, and enforces policy across agents.
+
+### Key Concepts
+
+- **Constitution**: Top-level authoritative rules (from CLAUDE.md)
+- **Shards**: Per-topic policy fragments distributed to agents
+- **Manifest**: Checksummed index for integrity verification
+- **Conformance Kit**: Runtime enforcement at agent boundaries
+
+```bash
+# Compile CLAUDE.md into policy bundle
+npx claude-flow@latest guidance compile -r ./CLAUDE.md -l ./CLAUDE.local.md
+
+# Retrieve specific policy sections
+npx claude-flow@latest guidance retrieve --topic security
+
+# Enforce policy (validation gate)
+npx claude-flow@latest guidance enforce
+
+# Optimize policy (reduce verbosity, deduplicate rules)
+npx claude-flow@latest guidance optimize
+```
+
+## Repository Layout
+
+```
+ruflo/                         ← Git root
+├── CLAUDE.md                  ← This file (project instructions)
+├── CLAUDE.local.md            ← Local overrides (not committed)
+├── package.json               ← Root (claude-flow umbrella, v3.5.48)
+├── bin/                       ← Root CLI launchers
+├── ruflo/                     ← ruflo npm package (thin wrapper)
+│   ├── package.json           ← ruflo@3.5.48
+│   └── src/                   ← MCP bridge, docker, scripts
+├── v3/                        ← V3 monorepo (pnpm workspaces)
+│   ├── package.json           ← Workspace root
+│   ├── @claude-flow/          ← All packages
+│   │   ├── cli/               ← Main CLI (@claude-flow/cli@3.5.48)
+│   │   │   ├── src/commands/  ← 30+ command implementations
+│   │   │   ├── src/mcp-tools/ ← 259+ MCP tool definitions
+│   │   │   └── src/ruvector/  ← RuVector intelligence system
+│   │   ├── guidance/          ← Policy governance
+│   │   ├── hooks/             ← 17 hooks + 12 workers + statusline
+│   │   ├── memory/            ← AgentDB + HNSW
+│   │   ├── security/          ← CVE remediation, input validation
+│   │   ├── neural/            ← SONA, MoE, EWC++
+│   │   ├── embeddings/        ← Vector embeddings (sql.js/ONNX)
+│   │   ├── codex/             ← Dual-mode Claude+Codex
+│   │   ├── integration/       ← agentic-flow bridge
+│   │   ├── swarm/             ← Swarm coordination
+│   │   ├── mcp/               ← MCP server
+│   │   ├── agents/            ← Agent lifecycle
+│   │   ├── aidefence/         ← AI safety and adversarial defences
+│   │   └── shared/            ← Shared types
+│   └── __tests__/             ← Integration tests
+├── agents/                    ← Agent YAML definitions (architect, coder, etc.)
+├── scripts/                   ← Utility scripts
+├── tests/                     ← Root-level test files
+└── v2/                        ← Legacy V2 code (reference only)
+```
 
 ## Support
 
