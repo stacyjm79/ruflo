@@ -209,6 +209,84 @@ export class PluginManager {
   }
 
   /**
+   * Install a plugin from a GitHub repository (github:owner/repo)
+   */
+  async installFromGithub(
+    owner: string,
+    repo: string,
+    pluginName?: string
+  ): Promise<{ success: boolean; error?: string; plugin?: InstalledPlugin }> {
+    if (!this.manifest) {
+      await this.initialize();
+    }
+
+    // Validate owner/repo to prevent injection
+    if (!/^[a-zA-Z0-9_.-]+$/.test(owner) || !/^[a-zA-Z0-9_.-]+$/.test(repo)) {
+      return { success: false, error: `Invalid GitHub owner/repo: ${owner}/${repo}` };
+    }
+
+    const packageName = pluginName || repo;
+    const githubSpec = `github:${owner}/${repo}`;
+
+    try {
+      if (this.manifest!.plugins[packageName]) {
+        return {
+          success: false,
+          error: `Plugin ${packageName} is already installed. Use upgrade to update.`,
+        };
+      }
+
+      const installDir = path.join(this.config.pluginsDir, 'node_modules');
+      await this.ensureDirectory(installDir);
+
+      console.log(`[PluginManager] Installing from ${githubSpec}...`);
+
+      await execFileAsync(
+        'npm', ['install', '--prefix', this.config.pluginsDir, githubSpec],
+        { timeout: 120000 }
+      );
+
+      // Try the repo name as installed package name
+      const packageJsonPath = path.join(installDir, repo, 'package.json');
+      let installedVersion = 'github';
+      let commands: string[] = [];
+      let hooks: string[] = [];
+      let resolvedName = packageName;
+
+      if (fs.existsSync(packageJsonPath)) {
+        const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        installedVersion = pkg.version || 'github';
+        resolvedName = pkg.name || packageName;
+        if (pkg['claude-flow']) {
+          commands = pkg['claude-flow'].commands || [];
+          hooks = pkg['claude-flow'].hooks || [];
+        }
+      }
+
+      const plugin: InstalledPlugin = {
+        name: resolvedName,
+        version: installedVersion,
+        installedAt: new Date().toISOString(),
+        enabled: true,
+        source: 'npm',
+        path: path.join(installDir, repo),
+        commands,
+        hooks,
+      };
+
+      this.manifest!.plugins[resolvedName] = plugin;
+      await this.saveManifest();
+
+      console.log(`[PluginManager] Installed ${resolvedName}@${installedVersion} from ${githubSpec}`);
+      return { success: true, plugin };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[PluginManager] Failed to install from ${githubSpec}:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
    * Install a plugin from a local path
    */
   async installFromLocal(

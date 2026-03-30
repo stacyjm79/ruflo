@@ -6,6 +6,8 @@
  * Created with ❤️ by ruv.io
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import type { Command, CommandContext, CommandResult } from '../types.js';
 import { output } from '../output.js';
 import {
@@ -20,6 +22,48 @@ import {
 } from '../plugins/store/index.js';
 import { getPluginManager, type InstalledPlugin } from '../plugins/manager.js';
 import { getBulkRatings } from '../services/registry-api.js';
+
+// ============================================================================
+// Marketplace config helpers
+// ============================================================================
+
+interface MarketplaceEntry {
+  name: string;
+  source: string; // e.g. "github:affaan-m/everything-claude-code"
+  type: 'github' | 'npm' | 'ipfs';
+  owner?: string;
+  repo?: string;
+  addedAt: string;
+}
+
+function getMarketplacesPath(): string {
+  return path.join(process.cwd(), '.claude-flow', 'plugins', 'marketplaces.json');
+}
+
+function readMarketplaces(): MarketplaceEntry[] {
+  const file = getMarketplacesPath();
+  if (!fs.existsSync(file)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf-8')) as MarketplaceEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function writeMarketplaces(entries: MarketplaceEntry[]): void {
+  const file = getMarketplacesPath();
+  const dir = path.dirname(file);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(entries, null, 2), 'utf-8');
+}
+
+function parseGithubRepo(spec: string): { owner: string; repo: string } | null {
+  // Accepts "owner/repo" or "github:owner/repo"
+  const clean = spec.replace(/^github:/, '');
+  const parts = clean.split('/');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  return { owner: parts[0], repo: parts[1] };
+}
 
 // List subcommand - Now uses IPFS-based registry
 const listCommand: Command = {
@@ -228,12 +272,33 @@ const installCommand: Command = {
     // Check if it's a local path
     const isLocalPath = name.startsWith('./') || name.startsWith('/') || name.startsWith('../');
 
+    // Check if it's a marketplace-scoped install: "plugin@marketplace-name"
+    // Distinguished from npm scoped packages (@scope/pkg) by checking if the
+    // suffix after @ matches a registered marketplace name.
+    let marketplaceSource: MarketplaceEntry | undefined;
+    if (!isLocalPath && name.includes('@')) {
+      const lastAt = name.lastIndexOf('@');
+      const potentialMarket = name.slice(lastAt + 1);
+      const potentialPlugin = name.slice(0, lastAt);
+      // Only treat as marketplace if not a scoped npm package version spec
+      if (potentialPlugin && !/^\d/.test(potentialMarket) && !potentialMarket.includes('.')) {
+        const marketplaces = readMarketplaces();
+        const found = marketplaces.find(m => m.name === potentialMarket);
+        if (found) {
+          marketplaceSource = found;
+          // Replace name with just the plugin part for further processing
+          (ctx.flags as Record<string, unknown>).name = potentialPlugin;
+        }
+      }
+    }
+    const resolvedName = ctx.flags.name as string;
+
     output.writeln();
     output.writeln(output.bold('Installing Plugin'));
     output.writeln(output.dim('─'.repeat(50)));
 
     const spinner = output.createSpinner({
-      text: isLocalPath ? `Installing from ${name}...` : `Discovering ${name} in registry...`,
+      text: isLocalPath ? `Installing from ${name}...` : marketplaceSource ? `Installing ${resolvedName} from marketplace ${marketplaceSource.name}...` : `Discovering ${resolvedName} in registry...`,
       spinner: 'dots'
     });
     spinner.start();
@@ -243,11 +308,11 @@ const installCommand: Command = {
       await manager.initialize();
 
       // Check if already installed
-      const existingPlugin = await manager.getPlugin(name);
+      const existingPlugin = await manager.getPlugin(resolvedName);
       if (existingPlugin) {
-        spinner.fail(`Plugin ${name} is already installed (v${existingPlugin.version})`);
+        spinner.fail(`Plugin ${resolvedName} is already installed (v${existingPlugin.version})`);
         output.writeln();
-        output.writeln(output.dim('Use "claude-flow plugins upgrade -n ' + name + '" to update'));
+        output.writeln(output.dim('Use "claude-flow plugins upgrade -n ' + resolvedName + '" to update'));
         return { success: false, exitCode: 1 };
       }
 
@@ -258,14 +323,27 @@ const installCommand: Command = {
         // Install from local path
         spinner.setText(`Installing from ${name}...`);
         result = await manager.installFromLocal(name);
+      } else if (marketplaceSource) {
+        // Install from registered marketplace
+        if (marketplaceSource.type === 'github' && marketplaceSource.owner && marketplaceSource.repo) {
+          spinner.setText(`Installing ${resolvedName} from ${marketplaceSource.source}...`);
+          result = await manager.installFromGithub(
+            marketplaceSource.owner,
+            marketplaceSource.repo,
+            resolvedName !== marketplaceSource.repo ? resolvedName : undefined
+          );
+        } else {
+          spinner.fail(`Unsupported marketplace type: ${marketplaceSource.type}`);
+          return { success: false, exitCode: 1 };
+        }
       } else {
         // First, try to find in registry for metadata
-        spinner.setText(`Discovering ${name} in registry...`);
+        spinner.setText(`Discovering ${resolvedName} in registry...`);
         const discovery = createPluginDiscoveryService();
         const registryResult = await discovery.discoverRegistry(registryName);
 
         if (registryResult.success && registryResult.registry) {
-          plugin = registryResult.registry.plugins.find(p => p.name === name || p.id === name);
+          plugin = registryResult.registry.plugins.find(p => p.name === resolvedName || p.id === resolvedName);
         }
 
         if (plugin) {
@@ -273,8 +351,8 @@ const installCommand: Command = {
         }
 
         // Install from npm (since IPFS is demo mode)
-        spinner.setText(`Installing ${name} from npm...`);
-        result = await manager.installFromNpm(name, version !== 'latest' ? version : undefined);
+        spinner.setText(`Installing ${resolvedName} from npm...`);
+        result = await manager.installFromNpm(resolvedName, version !== 'latest' ? version : undefined);
       }
 
       if (!result.success) {
@@ -300,6 +378,10 @@ const installCommand: Command = {
       if (plugin) {
         boxContent.push(`Trust: ${plugin.trustLevel}`);
         boxContent.push(`Permissions: ${plugin.permissions.join(', ') || 'none'}`);
+      }
+      if (marketplaceSource) {
+        boxContent.push(`Marketplace: ${marketplaceSource.name}`);
+        boxContent.push(`Market source: ${marketplaceSource.source}`);
       }
 
       output.printBox(boxContent.join('\n'), 'Installation Complete');
@@ -879,11 +961,154 @@ const rateCommand: Command = {
   },
 };
 
+// Marketplace add subcommand
+const marketplaceAddCommand: Command = {
+  name: 'add',
+  description: 'Add a GitHub repo (or npm/IPFS) as a plugin marketplace',
+  options: [
+    { name: 'name', short: 'n', type: 'string', description: 'Marketplace name (default: repo name)' },
+  ],
+  examples: [
+    { command: 'claude-flow plugins marketplace add affaan-m/everything-claude-code', description: 'Add GitHub repo as marketplace' },
+    { command: 'claude-flow plugins marketplace add owner/repo --name my-market', description: 'Add with custom name' },
+  ],
+  action: async (ctx: CommandContext): Promise<CommandResult> => {
+    const spec = ctx.args[0] as string;
+    if (!spec) {
+      output.printError('Usage: plugins marketplace add <owner/repo>');
+      return { success: false, exitCode: 1 };
+    }
+
+    const parsed = parseGithubRepo(spec);
+    if (!parsed) {
+      output.printError(`Invalid GitHub repo format: "${spec}". Expected owner/repo`);
+      return { success: false, exitCode: 1 };
+    }
+
+    const { owner, repo } = parsed;
+    const name = (ctx.flags.name as string) || repo;
+
+    const marketplaces = readMarketplaces();
+    if (marketplaces.find(m => m.name === name)) {
+      output.printError(`Marketplace "${name}" already registered. Remove it first.`);
+      return { success: false, exitCode: 1 };
+    }
+
+    const entry: MarketplaceEntry = {
+      name,
+      source: `github:${owner}/${repo}`,
+      type: 'github',
+      owner,
+      repo,
+      addedAt: new Date().toISOString(),
+    };
+
+    marketplaces.push(entry);
+    writeMarketplaces(marketplaces);
+
+    output.writeln();
+    output.writeln(output.success(`Marketplace "${name}" added`));
+    output.writeln(output.dim(`Source: github:${owner}/${repo}`));
+    output.writeln();
+    output.writeln(output.dim(`Install plugins from this marketplace:`));
+    output.writeln(output.highlight(`  claude-flow plugins install -n <plugin>@${name}`));
+    output.writeln();
+    return { success: true, data: entry };
+  },
+};
+
+// Marketplace list subcommand
+const marketplaceListCommand: Command = {
+  name: 'list',
+  description: 'List registered marketplaces',
+  examples: [
+    { command: 'claude-flow plugins marketplace list', description: 'List all marketplaces' },
+  ],
+  action: async (): Promise<CommandResult> => {
+    const marketplaces = readMarketplaces();
+    output.writeln();
+    output.writeln(output.bold('Registered Marketplaces'));
+    output.writeln(output.dim('─'.repeat(60)));
+
+    if (marketplaces.length === 0) {
+      output.writeln(output.dim('No marketplaces registered.'));
+      output.writeln(output.dim('Run "claude-flow plugins marketplace add owner/repo" to add one.'));
+      output.writeln();
+      return { success: true, data: [] };
+    }
+
+    output.printTable({
+      columns: [
+        { key: 'name', header: 'Name', width: 25 },
+        { key: 'source', header: 'Source', width: 45 },
+        { key: 'type', header: 'Type', width: 8 },
+      ],
+      data: marketplaces.map(m => ({ name: m.name, source: m.source, type: m.type })),
+    });
+    output.writeln();
+    return { success: true, data: marketplaces };
+  },
+};
+
+// Marketplace remove subcommand
+const marketplaceRemoveCommand: Command = {
+  name: 'remove',
+  description: 'Remove a registered marketplace',
+  examples: [
+    { command: 'claude-flow plugins marketplace remove everything-claude-code', description: 'Remove marketplace' },
+  ],
+  action: async (ctx: CommandContext): Promise<CommandResult> => {
+    const name = ctx.args[0] as string;
+    if (!name) {
+      output.printError('Usage: plugins marketplace remove <name>');
+      return { success: false, exitCode: 1 };
+    }
+
+    const marketplaces = readMarketplaces();
+    const idx = marketplaces.findIndex(m => m.name === name);
+    if (idx === -1) {
+      output.printError(`Marketplace "${name}" not found`);
+      return { success: false, exitCode: 1 };
+    }
+
+    marketplaces.splice(idx, 1);
+    writeMarketplaces(marketplaces);
+
+    output.writeln(output.success(`Marketplace "${name}" removed`));
+    return { success: true };
+  },
+};
+
+// Marketplace parent subcommand
+const marketplaceCommand: Command = {
+  name: 'marketplace',
+  description: 'Manage plugin marketplaces (add/list/remove)',
+  subcommands: [marketplaceAddCommand, marketplaceListCommand, marketplaceRemoveCommand],
+  examples: [
+    { command: 'claude-flow plugins marketplace add affaan-m/everything-claude-code', description: 'Add GitHub repo as marketplace' },
+    { command: 'claude-flow plugins marketplace list', description: 'List registered marketplaces' },
+    { command: 'claude-flow plugins marketplace remove everything-claude-code', description: 'Remove marketplace' },
+  ],
+  action: async (): Promise<CommandResult> => {
+    output.writeln();
+    output.writeln(output.bold('Plugin Marketplace'));
+    output.writeln(output.dim('Manage external plugin sources'));
+    output.writeln();
+    output.printList([
+      `${output.highlight('add')}    - Add a GitHub repo as a marketplace`,
+      `${output.highlight('list')}   - List registered marketplaces`,
+      `${output.highlight('remove')} - Remove a marketplace`,
+    ]);
+    output.writeln();
+    return { success: true };
+  },
+};
+
 // Main plugins command - Now with IPFS-based registry
 export const pluginsCommand: Command = {
   name: 'plugins',
   description: 'Plugin management with IPFS-based decentralized registry',
-  subcommands: [listCommand, searchCommand, installCommand, uninstallCommand, upgradeCommand, toggleCommand, infoCommand, createCommand, rateCommand],
+  subcommands: [listCommand, searchCommand, installCommand, uninstallCommand, upgradeCommand, toggleCommand, infoCommand, createCommand, rateCommand, marketplaceCommand],
   examples: [
     { command: 'claude-flow plugins list', description: 'List plugins from IPFS registry' },
     { command: 'claude-flow plugins search -q neural', description: 'Search for plugins' },
@@ -904,7 +1129,8 @@ export const pluginsCommand: Command = {
       `${output.highlight('upgrade')}   - Upgrade an installed plugin`,
       `${output.highlight('toggle')}    - Enable or disable a plugin`,
       `${output.highlight('info')}      - Show detailed plugin information`,
-      `${output.highlight('create')}    - Scaffold a new plugin project`,
+      `${output.highlight('create')}      - Scaffold a new plugin project`,
+      `${output.highlight('marketplace')} - Manage external plugin marketplaces`,
     ]);
     output.writeln();
     output.writeln(output.bold('IPFS-Based Features:'));
