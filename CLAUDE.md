@@ -1,8 +1,9 @@
-# Claude Code Configuration - Ruflo v3.5
+# Claude Code Configuration - Ruflo v3.5.48
 
-> **Ruflo v3.5** (2026-02-27) — First major stable release. Formerly "Claude Flow".
+> **Ruflo v3.5.48** (2026-04-18) — Enterprise AI agent orchestration platform. Formerly "Claude Flow".
 > 5,900+ commits, 55 alpha iterations, 259 MCP tools, 60+ agents, 8 AgentDB controllers.
-> Packages: `@claude-flow/cli@3.5.0`, `claude-flow@3.5.0`, `ruflo@3.5.0`
+> Packages: `@claude-flow/cli@3.5.48`, `claude-flow@3.5.48`, `ruflo@3.5.48`
+> Branch: `claude/add-claude-documentation-NMNvw` | Node ≥20, PNPM ≥8
 
 ## Behavioral Rules (Always Enforced)
 
@@ -34,16 +35,46 @@
 - Use event sourcing for state changes
 - Ensure input validation at system boundaries
 
+### Repository Structure
+
+```
+/home/user/ruflo/
+├── bin/                   # CLI entry points (cli.js proxies to v3)
+├── v3/                    # V3 monorepo (current, production)
+│   ├── @claude-flow/      # 23 scoped packages (cli, memory, hooks, security, …)
+│   ├── src/               # Root v3 source (agent-lifecycle, coordination, memory, …)
+│   ├── implementation/    # ADRs (001–072), architecture docs, swarm plans
+│   ├── __tests__/         # Integration + appliance tests
+│   └── vitest.config.ts
+├── v2/                    # LEGACY (do not modify — reference only)
+├── ruflo/                 # Runtime MCP bridge + Docker orchestration
+│   ├── bin/ruflo.js       # Ruflo CLI entry
+│   ├── src/mcp-bridge/    # MCP bridge server
+│   └── docker-compose.yml
+├── tests/                 # Root test suite (rvf-*.test.ts)
+├── .claude/               # Claude Code config (28 agents, 21 commands, 40+ skills)
+├── CLAUDE.md              # This file
+└── AGENTS.md              # 60+ agent type specifications
+```
+
+**Package managers:** PNPM (v3 monorepo), npm (root & ruflo). JS type: ES Modules throughout.
+
 ### Key Packages
 
-| Package | Path | Purpose |
-|---------|------|---------|
-| `@claude-flow/cli` | `v3/@claude-flow/cli/` | CLI entry point (26 commands) |
-| `@claude-flow/codex` | `v3/@claude-flow/codex/` | Dual-mode Claude + Codex collaboration |
-| `@claude-flow/guidance` | `v3/@claude-flow/guidance/` | Governance control plane |
-| `@claude-flow/hooks` | `v3/@claude-flow/hooks/` | 17 hooks + 12 workers |
-| `@claude-flow/memory` | `v3/@claude-flow/memory/` | AgentDB + HNSW search |
-| `@claude-flow/security` | `v3/@claude-flow/security/` | Input validation, CVE remediation |
+| Package | Version | Path | Purpose |
+|---------|---------|------|---------|
+| `@claude-flow/cli` | 3.5.48 | `v3/@claude-flow/cli/` | CLI entry point (26 commands, 140+ subcommands) |
+| `@claude-flow/codex` | 3.0.0-alpha.8 | `v3/@claude-flow/codex/` | Dual-mode Claude + Codex collaboration |
+| `@claude-flow/guidance` | 3.0.0-alpha.1 | `v3/@claude-flow/guidance/` | Governance control plane |
+| `@claude-flow/hooks` | 3.0.0-alpha.7 | `v3/@claude-flow/hooks/` | 27 hooks + 12 workers |
+| `@claude-flow/memory` | 3.0.0-alpha.12 | `v3/@claude-flow/memory/` | AgentDB + HNSW search |
+| `@claude-flow/security` | 3.0.0-alpha.6 | `v3/@claude-flow/security/` | Input validation, CVE remediation |
+| `@claude-flow/embeddings` | 3.0.0-alpha.12 | `v3/@claude-flow/embeddings/` | Vector embeddings (75x faster) |
+| `@claude-flow/mcp` | 3.0.0-alpha.8 | `v3/@claude-flow/mcp/` | MCP server (259 tools) |
+| `@claude-flow/neural` | alpha | `v3/@claude-flow/neural/` | RuVector SONA, MoE, EWC++ |
+| `@claude-flow/swarm` | alpha | `v3/@claude-flow/swarm/` | Multi-agent swarm coordination |
+| `@claude-flow/shared` | 3.0.0-alpha.7 | `v3/@claude-flow/shared/` | Shared types, utilities, events |
+| `ruflo` | 3.5.48 | `ruflo/` | Runtime MCP bridge + Docker orchestration |
 
 ## Concurrency: 1 MESSAGE = ALL RELATED OPERATIONS
 
@@ -647,7 +678,7 @@ SendMessage({
 | `in-process` | Teammates run in same process (default for CI/background) |
 | `tmux` | Split-pane display in terminal (requires tmux) |
 
-## V3 Hooks System (17 Hooks + 12 Workers)
+## V3 Hooks System (27 Hooks + 12 Workers)
 
 ### Hook Categories
 
@@ -658,6 +689,8 @@ SendMessage({
 | **Intelligence** | `route`, `explain`, `pretrain`, `build-agents`, `transfer` | Neural learning |
 | **Learning** | `intelligence` (trajectory-start/step/end, pattern-store/search, stats, attention) | Reinforcement |
 | **Agent Teams** | `teammate-idle`, `task-completed` | Multi-agent coordination |
+| **Autopilot** | `autopilot-start`, `autopilot-checkpoint`, `autopilot-resume`, `autopilot-complete` | Persistent completion |
+| **Security** | `security-scan`, `cve-check` | Automated security gates |
 
 ### 12 Background Workers
 
@@ -754,6 +787,13 @@ Features:
 | MCP Response | <100ms | Achieved |
 | CLI Startup | <500ms | Achieved |
 | SONA Adaptation | <0.05ms | In progress |
+
+## Recent Notable Features (v3.5.45–3.5.48)
+
+- **WASM CLI**: Sandboxed command execution via WASM kernel for secure automation
+- **Autopilot Persistent Completion** (ADR-072): Self-continuing agent sessions with state checkpointing
+- **Agent Booster WASM**: Tier-1 LLM bypass for simple transforms — `var→const`, `add-types`, etc.
+- **ADR-072**: Autopilot integration — persistent agent completion across session boundaries
 
 ## Environment Variables
 
