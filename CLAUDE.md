@@ -1,8 +1,8 @@
 # Claude Code Configuration - Ruflo v3.5
 
-> **Ruflo v3.5** (2026-02-27) — First major stable release. Formerly "Claude Flow".
-> 5,900+ commits, 55 alpha iterations, 259 MCP tools, 60+ agents, 8 AgentDB controllers.
-> Packages: `@claude-flow/cli@3.5.0`, `claude-flow@3.5.0`, `ruflo@3.5.0`
+> **Ruflo v3.5.48** (2026-04-18) — Stable release. Formerly "Claude Flow".
+> 5,900+ commits, 55 alpha iterations, 215+ MCP tools, 60+ agents, 8 AgentDB controllers.
+> Packages: `@claude-flow/cli@3.5.48`, `claude-flow@3.5.48`, `ruflo@3.5.48`
 
 ## Behavioral Rules (Always Enforced)
 
@@ -34,16 +34,55 @@
 - Use event sourcing for state changes
 - Ensure input validation at system boundaries
 
-### Key Packages
+### Repository Structure
+
+```
+ruflo/
+├── bin/                     # CLI entry points (cli.js, npx-repair.js, npx-safe-launch.js)
+├── v3/                      # V3 implementation — 22 @claude-flow modules
+│   ├── @claude-flow/        # Modular packages (see table below)
+│   ├── implementation/      # ADRs, architecture docs, migration guides
+│   ├── __tests__/           # Integration & appliance tests
+│   └── index.ts             # V3 main entry point
+├── v2/                      # Previous generation (docs, examples, benchmarks)
+├── ruflo/                   # Ruflo package — includes SvelteKit frontend (ruvocal)
+│   └── src/
+│       ├── mcp-bridge/      # MCP server bridge
+│       ├── ruvocal/         # SvelteKit dashboard app
+│       └── nginx/           # Nginx configuration
+├── tests/                   # Root-level integration tests
+├── scripts/                 # Build and deployment scripts
+├── agents/                  # Agent definitions
+├── .claude/                 # Claude Code settings, MCP config
+└── .github/                 # CI/CD workflows (7 pipelines)
+```
+
+### Key Packages (22 @claude-flow modules)
 
 | Package | Path | Purpose |
 |---------|------|---------|
 | `@claude-flow/cli` | `v3/@claude-flow/cli/` | CLI entry point (26 commands) |
+| `@claude-flow/shared` | `v3/@claude-flow/shared/` | Core types, events, utilities, MCP infrastructure |
+| `@claude-flow/swarm` | `v3/@claude-flow/swarm/` | 15-agent coordination with hierarchical mesh topology |
+| `@claude-flow/memory` | `v3/@claude-flow/memory/` | AgentDB + HNSW vector search |
+| `@claude-flow/security` | `v3/@claude-flow/security/` | Input validation, CVE remediation, credential management |
+| `@claude-flow/hooks` | `v3/@claude-flow/hooks/` | 17 hooks + 12 background workers |
 | `@claude-flow/codex` | `v3/@claude-flow/codex/` | Dual-mode Claude + Codex collaboration |
 | `@claude-flow/guidance` | `v3/@claude-flow/guidance/` | Governance control plane |
-| `@claude-flow/hooks` | `v3/@claude-flow/hooks/` | 17 hooks + 12 workers |
-| `@claude-flow/memory` | `v3/@claude-flow/memory/` | AgentDB + HNSW search |
-| `@claude-flow/security` | `v3/@claude-flow/security/` | Input validation, CVE remediation |
+| `@claude-flow/mcp` | `v3/@claude-flow/mcp/` | MCP server and tools (215+ tools) |
+| `@claude-flow/neural` | `v3/@claude-flow/neural/` | SONA learning, neural modes |
+| `@claude-flow/performance` | `v3/@claude-flow/performance/` | Benchmarking, Flash Attention validation |
+| `@claude-flow/embeddings` | `v3/@claude-flow/embeddings/` | Vector embeddings (sql.js, HNSW, hyperbolic) |
+| `@claude-flow/testing` | `v3/@claude-flow/testing/` | TDD London School test framework |
+| `@claude-flow/deployment` | `v3/@claude-flow/deployment/` | Release management, CI/CD |
+| `@claude-flow/plugins` | `v3/@claude-flow/plugins/` | Plugin system (manager, discovery, store) |
+| `@claude-flow/providers` | `v3/@claude-flow/providers/` | LLM provider abstraction layer |
+| `@claude-flow/integration` | `v3/@claude-flow/integration/` | agentic-flow optimizations (token reduction) |
+| `@claude-flow/agents` | `v3/@claude-flow/agents/` | Agent definitions and lifecycle |
+| `@claude-flow/claims` | `v3/@claude-flow/claims/` | Claims-based authorization |
+| `@claude-flow/aidefence` | `v3/@claude-flow/aidefence/` | AI security defense layer |
+| `@claude-flow/browser` | `v3/@claude-flow/browser/` | Browser automation |
+| `@claude-flow/neural` | `v3/@claude-flow/neural/` | Neural coordination and SONA |
 
 ## Concurrency: 1 MESSAGE = ALL RELATED OPERATIONS
 
@@ -1039,6 +1078,60 @@ npx claude-flow@v3alpha plugins publish
 ```
 
 Registry source: IPFS via Pinata (`QmXbfEAaR7D2Ujm4GAkbwcGZQMHqAMpwDoje4583uNP834`)
+
+## Testing
+
+**Framework:** Vitest (replaces Jest)
+
+### Test Locations
+
+| Location | Purpose |
+|----------|---------|
+| `tests/` | Root-level integration tests (`rvf-*.test.ts`) |
+| `v3/__tests__/appliance/` | Component appliance tests |
+| `v3/__tests__/integration/` | Cross-module integration tests |
+| `v3/@claude-flow/*/src/**/*.test.ts` | Unit tests per module |
+| `ruflo/src/ruvocal/` | SvelteKit frontend tests (vitest.setup.ts) |
+
+### Test Commands
+
+```bash
+npm test                          # Run all tests
+npm run test:ui                   # Vitest UI (interactive)
+npm run test:security             # Security tests only (v3/__tests__/security/)
+npm run test:integration          # Integration suite
+npm run test:coverage             # Coverage reports
+```
+
+### TDD Conventions
+
+- Use **London School TDD** (mock-first): design interfaces before implementation
+- Mocks live alongside test files
+- Each @claude-flow module has its own `vitest.config.ts`
+- Integration tests use real dependencies (no mocks)
+
+## CI/CD Pipelines
+
+**Location:** `.github/workflows/`
+
+| Workflow | File | Triggers |
+|----------|------|---------|
+| Main CI | `ci.yml` | Push to main/develop, PRs, daily schedule |
+| V3 Module CI | `v3-ci.yml` | V3 module changes |
+| Integration Tests | `integration-tests.yml` | Full integration suite |
+| Verification Gates | `verification-pipeline.yml` | Pre-merge checks |
+| Rollback Manager | `rollback-manager.yml` | Deployment rollback |
+| Status Badges | `status-badges.yml` | Badge generation |
+
+### CI Checks
+
+- Security audit (`npm audit --audit-level high`)
+- TypeScript compilation
+- Linting (`@claude-flow/cli` lint)
+- Unit + integration tests
+- Coverage thresholds
+- Docker regression tests
+- License compliance
 
 ## Support
 
