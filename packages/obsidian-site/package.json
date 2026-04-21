@@ -1,0 +1,45 @@
+{
+  "name": "obsidian-site",
+  "version": "1.0.0",
+  "description": "Build static sites from Obsidian vaults — converts markdown notes with wikilinks, tags, and frontmatter into navigable HTML",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "obsidian-site": "./bin/obsidian-site.js"
+  },
+  "files": [
+    "bin/**",
+    "src/**",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "keywords": [
+    "obsidian",
+    "static-site",
+    "markdown",
+    "wikilinks",
+    "vault",
+    "notes",
+    "cli"
+  ],
+  "author": {
+    "name": "RuvNet",
+    "email": "ruv@ruv.io",
+    "url": "https://ruv.io"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruvnet/claude-flow.git",
+    "directory": "packages/obsidian-site"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  }
+}
